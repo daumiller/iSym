@@ -91,9 +91,9 @@ static int _sym_command_idCurrent = 10000;
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 - (void) dealloc
 {
-  self.command    = nil;
-  self.data       = nil;
-  self.parameters = nil;
+  [command release];
+  [data    release];
+  [parameters release];
   [super dealloc];
 }
 //----------------------------------------------------------------------------------------------------------------------------------

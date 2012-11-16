@@ -6,4 +6,7 @@
 #import "SYMError.h"
 #import "SYMCommand.h"
 #import "SYMSession.h"
+#import "SYMSession+Filesystem.h"
+#import "SYMFile.h"
+#import "SYMSession+AccountManager.h"
 //==================================================================================================================================

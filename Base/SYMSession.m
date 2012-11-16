@@ -9,7 +9,8 @@
 //==================================================================================================================================
 @implementation SYMSession
 //==================================================================================================================================
-//  PROPERTIES
+#pragma mark -
+#pragma mark Properties
 //==================================================================================================================================
 @synthesize connected;
 @synthesize loggedIn;
@@ -39,7 +40,8 @@
   keepAlive = inKeepAlive;
 }
 //==================================================================================================================================
-//  CONSTRUCTORS
+#pragma mark -
+#pragma mark Constructors
 //==================================================================================================================================
 + sessionForServer:(NSString *) Server
            aixUser:(NSString *) AixUser
@@ -101,7 +103,8 @@
   return self;
 }
 //==================================================================================================================================
-//  DESTRUCTOR
+#pragma mark -
+#pragma mark Cleanup
 //==================================================================================================================================
 - (void) dealloc
 {
@@ -121,7 +124,8 @@
   [super dealloc];
 }
 //==================================================================================================================================
-//  PUBLIC
+#pragma mark -
+#pragma mark Public
 //==================================================================================================================================
 - (NSString *)toString
 {
@@ -272,6 +276,7 @@
   if(([stat rangeOfString:prompt].location != NSNotFound) || ([stat rangeOfString:@">"].location != NSNotFound))
     [self writeString:@"export WINDOWSLEVEL=3\n"];
   
+  //TODO: needs testing (on a different system)...
   if([stat rangeOfString:@"SymStart~Global"].location == NSNotFound)
   {
     stat = [self expectStrings:[NSArray arrayWithObjects:prompt,@">",@"SymStart~Global",nil]];
@@ -347,119 +352,16 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 - (void) wakeUp
 {
-  [self writeString:@"WakeUp"];
+  SYMCommand *cmd = [[SYMCommand alloc] init];
+  cmd.command = @"WakeUp";
+  [self writeCommand:cmd];
+  [cmd release];
   [self update];
 }
 
 //==================================================================================================================================
-//  PUBLIC: PROTOCOL: ACCOUNT MANAGER
-//==================================================================================================================================
-- (SYMError) AccountManager_LoadAccount:(NSString *)account
-{
-  if(account == nil)         return SYMError_InvalidParameter;
-  if([account length] != 10) return SYMError_InvalidParameter;
-  
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  SYMCommand *cmd;
-  
-  static uint8 bAcctMgr[3] = {(uint8)'m', (uint8)'1', 0x1B};
-  [self writeBytes:bAcctMgr fromOffset:0 ofLength:3];
-  cmd = [self readCommand];
-  
-  while((cmd != nil) && ([cmd.command localizedCaseInsensitiveCompare:@"Input"] != NSOrderedSame))
-    cmd = [self readCommand];
-  if(cmd == nil)
-  {
-    [pool drain];
-    return SYMError_Protocol;
-  }
-  
-  [self writeString:[NSString stringWithFormat:@"%@\r",account]];
-  cmd = [self readCommand];
-  
-  while((cmd != nil) && ([cmd.command localizedCaseInsensitiveCompare:@"Input"] != NSOrderedSame))
-    cmd = [self readCommand];
-  if(cmd == nil)
-    { [pool drain]; return SYMError_Protocol; }
-  if(![cmd hasParam:@"HelpCode"])
-    { [pool drain]; return SYMError_Protocol; }
-  if([[cmd getParam:@"HelpCode"] localizedCaseInsensitiveCompare:@"11201"] != NSOrderedSame)
-    { [pool drain]; return SYMError_Protocol; }
-  
-  [pool drain];
-  return SYMError_None;
-}
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-- (NSString *) AccountManager_DemandHtml_Begin:(NSString *)specfile
-{
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  SYMCommand *cmd;
-  
-  [self writeString:[NSString stringWithFormat:@"%@\r",specfile]];
-  cmd = [self readCommand];
-  NSMutableString *html = [NSMutableString stringWithCapacity:0];
-  [html appendString:@"<HTML>"];
-  
-  BOOL done = NO;
-  while((cmd != nil) && (!done))
-  {
-    if([cmd.command localizedCaseInsensitiveCompare:@"HTMLView"] == NSOrderedSame)
-      if([cmd hasParam:@"Action"])
-        if([cmd getParam:@"Action"] != nil)
-          if([cmd getParam:@"Action"].length > 0)
-            if([[cmd getParam:@"Action"] localizedCaseInsensitiveCompare:@"Line"] == NSOrderedSame)
-              [html appendString:[cmd getFileData]];
-    
-    cmd = [self readCommand];
-    
-    if([cmd.command localizedCaseInsensitiveCompare:@"HTMLView"] == NSOrderedSame)
-      if([cmd hasParam:@"Action"])
-        if([cmd getParam:@"Action"] != nil)
-          if([cmd getParam:@"Action"].length > 0)
-            if([[cmd getParam:@"Action"] localizedCaseInsensitiveCompare:@"Display"] == NSOrderedSame)
-              done = YES;
-  }
-  if(cmd == nil) { [pool drain]; return nil; }
-  
-  [html appendString:@"</HTML>"];
-  NSString *result = [html copy];
-  [pool drain];
-  return [result autorelease];
-}
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-- (SYMError) AccountManager_DemandHtml_Complete:(NSDictionary *)values
-{
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  SYMCommand *cmd;
-  
-  if(values != nil)
-  {
-    NSArray *keys = [values allKeys];
-    for(NSString *key in keys)
-    {
-      NSString *value = [values objectForKey:key];
-      [self writeString:[NSString stringWithFormat:@"%@=%@\r",key,value]];
-    }
-  }
-  
-  [self writeString:@"\r"];    cmd = [self readCommand];
-  [self writeString:@"EOD\r"]; cmd = [self readCommand];
-  
-  while((cmd != nil) && ([cmd.command localizedCaseInsensitiveCompare:@"Input"] != NSOrderedSame))
-    cmd = [self readCommand];
-  if(cmd == nil)
-    { [pool drain]; return SYMError_Protocol; }
-  if(![cmd hasParam:@"HelpCode"])
-    { [pool drain]; return SYMError_Protocol; }
-  if([[cmd getParam:@"HelpCode"] localizedCaseInsensitiveCompare:@"11201"] != NSOrderedSame)
-    { [pool drain]; return SYMError_Protocol; }
-  
-  [pool drain];
-  return SYMError_None;
-}
-
-//==================================================================================================================================
-//  PROTECTED
+#pragma mark -
+#pragma mark Library
 //==================================================================================================================================
 //    Conversions (ASCII/UTF8/INT/BYTE)
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -558,6 +460,7 @@
   [socket setTimeout:(milliseconds / 1000)];
   [socket sendBytes:bytes+offset count:length];
   [socket setTimeout:oldTimeout];
+  [self update];
 }
 //----------------------------------------------------------------------------------------------------------------------------------
 //    Reading
@@ -646,6 +549,7 @@
   
   [socket setTimeout:oldTimeout];
   [pool drain];
+  [self update];
   return buff;
 }
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -674,6 +578,7 @@
   
   NSString *result = [read copy];
   [pool drain];
+  [self update];
   return [result autorelease];
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -711,6 +616,7 @@
   
   NSString *result = [read copy];
   [pool drain];
+  [self update];
   return [result autorelease];
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -748,10 +654,12 @@
   NSString *result = [SYMSession decodeStringData:read];
   [result retain];
   [pool drain];
+  [self update];
   return [result autorelease];
 }
 //==================================================================================================================================
-//  PRIVATE
+#pragma mark -
+#pragma mark Private
 //==================================================================================================================================
 - (BOOL) lock
 {

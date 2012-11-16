@@ -19,6 +19,16 @@ typedef enum
   SYMError_Protocol         =   11,
   SYMError_InvalidParameter =   12,
   SYMError_FileNotFound     =   13,
-  SYMError_Unspecified      = 4095
+  SYMError_Unspecified      = 4095,
+  
+  SYMError_Filesystem_None                 = 5000,
+  SYMError_Filesystem_NotFound             = 5001,
+  SYMError_Filesystem_PermissionDenied     = 5002,
+  SYMError_Filesystem_InvalidActionForType = 5003,
+  SYMError_Filesystem_Connection           = 5004,
+  SYMError_Filesystem_FilenameTooLong      = 5005,
+  SYMError_Filesystem_FileTooLarge         = 5006,
+  SYMError_Filesystem_Unspecified          = 8192
+  
 } SYMError;
 //==================================================================================================================================
