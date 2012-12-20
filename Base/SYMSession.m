@@ -301,7 +301,7 @@
   
   NSString *cmdInp = @"Input";
   NSString *cmdErr = @"SymLogonError";
-  while([cmd.command localizedCaseInsensitiveCompare:cmdInp] != NSOrderedSame)
+  while([cmd.command localizedCaseInsensitiveCompare:cmdInp] != NSOrderedSame) //FRAGILE: relies on first (prev) command being junk
   {
     if([cmd.command localizedCaseInsensitiveCompare:cmdErr] == NSOrderedSame)
       if([[cmd getParam:@"Text"] rangeOfString:@"Too Many Invalid Password Attempts"].location != NSNotFound)
@@ -312,6 +312,16 @@
       }
     cmd = [self readCommand];
     if(cmd == nil) { [pool drain]; [self unlock]; return SYMError_ReceiveError; }
+
+    if([cmd.command localizedCaseInsensitiveCompare:cmdInp] == NSOrderedSame)
+    {
+      if([[cmd getParam:@"HelpCode"] localizedCaseInsensitiveCompare:"10025"] == NSOrderedSame)
+      {
+        [self writeString:@"$WinHostSync$\r"];
+        cmd = [self readCommand];
+        if(cmd == nil) { [pool drain]; [self unlock]; return SYMError_ReceiveError; }
+      }
+    }
   }
   
   [self writeString:[NSString stringWithFormat:@"%@\r",symUser]];
