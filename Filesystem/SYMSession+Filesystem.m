@@ -238,7 +238,7 @@ NSString *SYMFile_TypeStr[] = { @"Report"        ,  // SYMFile_Report
     }
     
     NSString *chunk = [cmd getFileData];
-    if([chunk length] > 0)
+    if(([chunk length] > 0) || (type == SYMFile_Report))
     {
       [wip appendString:chunk];
       if(type == SYMFile_Report) [wip appendString:@"\n"];
